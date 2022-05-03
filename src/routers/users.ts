@@ -1,6 +1,6 @@
 import { Router, RequestHandler } from 'express';
 import { Op } from 'sequelize';
-import { UserSchema } from '../validation';
+import { LoginUserSchema, RegisterUserSchema } from '../validation';
 
 import type { SequelizeClient } from '../sequelize';
 import type { User } from '../repositories/types';
@@ -19,12 +19,12 @@ export function initUsersRouter(sequelizeClient: SequelizeClient): Router {
 
   router.route('/')
     .get(tokenValidation, initListUsersRequestHandler(sequelizeClient))
-    .post(tokenValidation, adminValidation, BodyValidation(UserSchema), initCreateUserRequestHandler(sequelizeClient));
+    .post(tokenValidation, adminValidation, BodyValidation(RegisterUserSchema), initCreateUserRequestHandler(sequelizeClient));
 
   router.route('/login')
-    .post(BodyValidation(UserSchema), initLoginUserRequestHandler(sequelizeClient));
+    .post(BodyValidation(LoginUserSchema), initLoginUserRequestHandler(sequelizeClient));
   router.route('/register')
-    .post(BodyValidation(UserSchema), initRegisterUserRequestHandler(sequelizeClient));
+    .post(BodyValidation(RegisterUserSchema), initRegisterUserRequestHandler(sequelizeClient));
 
   return router;
 }
