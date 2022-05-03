@@ -56,7 +56,6 @@ function initListUsersRequestHandler(sequelizeClient: SequelizeClient): RequestH
 function initCreateUserRequestHandler(sequelizeClient: SequelizeClient): RequestHandler {
   return async function createUserRequestHandler(req, res, next): Promise<void> {
     try {
-      // NOTE(roman): missing validation and cleaning
       const { type, name, email, password } = req.body as CreateUserData;
 
       await createUser({ type, name, email, password }, sequelizeClient);
