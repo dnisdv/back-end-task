@@ -3,7 +3,7 @@ import { RequestHandler } from 'express';
 import type { SequelizeClient } from '../sequelize';
 import type { User } from '../repositories/types';
 
-import { UnauthorizedError, ForbiddenError, NotImplementedError } from '../errors';
+import { UnauthorizedError, ForbiddenError } from '../errors';
 import { isValidToken, extraDataFromToken } from '../security';
 import { UserType } from '../constants';
 
@@ -37,11 +37,10 @@ export function initTokenValidationRequestHandler(sequelizeClient: SequelizeClie
         throw new UnauthorizedError('AUTH_TOKEN_INVALID');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      (req as any).auth = {
+      (req as unknown as { auth: RequestAuth }).auth = {
         token,
         user,
-      } as RequestAuth;
+      };
 
       return next();
     } catch (error) {
@@ -53,7 +52,13 @@ export function initTokenValidationRequestHandler(sequelizeClient: SequelizeClie
 // NOTE(roman): assuming that `tokenValidationRequestHandler` is placed before
 export function initAdminValidationRequestHandler(): RequestHandler {
   return function adminValidationRequestHandler(req, res, next): void {
-    throw new NotImplementedError('ADMIN_VALIDATION_NOT_IMPLEMENTED_YET');
+    const isAdmin = (req as unknown as { auth: RequestAuth }).auth.user.type === UserType.ADMIN;
+
+    if(isAdmin){
+      return next();
+    }else{
+      throw new ForbiddenError('AUTH_FORBIDDEN');
+    }
   };
 }
 

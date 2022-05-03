@@ -1,4 +1,5 @@
 import { Sequelize, DataTypes } from 'sequelize';
+import bcrypt from 'bcryptjs';
 
 import { UserType } from '../constants/users';
 import { User } from '../repositories/users';
@@ -56,5 +57,13 @@ export function setupUsersModel(modelName: string, sequelize: Sequelize): void {
       plural: 'users',
     },
     timestamps: true,
+    hooks: {
+      beforeCreate: (user) => {
+        if (user.passwordHash) {
+         const salt = bcrypt.genSaltSync(8);
+         user.passwordHash = bcrypt.hashSync(user.passwordHash, salt);
+      }
+    },
+  },
   });
 }

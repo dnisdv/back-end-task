@@ -1,13 +1,15 @@
 import { Router, RequestHandler } from 'express';
 import { Op } from 'sequelize';
+import { UserSchema } from '../validation';
 
 import type { SequelizeClient } from '../sequelize';
 import type { User } from '../repositories/types';
 
 import { BadRequestError, UnauthorizedError } from '../errors';
-import { hashPassword, generateToken } from '../security';
+import { checkPassword, generateToken } from '../security';
 import { initTokenValidationRequestHandler, initAdminValidationRequestHandler, RequestAuth } from '../middleware/security';
 import { UserType } from '../constants';
+import { BodyValidation } from '../middleware/bodyValidation';
 
 export function initUsersRouter(sequelizeClient: SequelizeClient): Router {
   const router = Router({ mergeParams: true });
@@ -17,12 +19,12 @@ export function initUsersRouter(sequelizeClient: SequelizeClient): Router {
 
   router.route('/')
     .get(tokenValidation, initListUsersRequestHandler(sequelizeClient))
-    .post(tokenValidation, adminValidation, initCreateUserRequestHandler(sequelizeClient));
+    .post(tokenValidation, adminValidation, BodyValidation(UserSchema), initCreateUserRequestHandler(sequelizeClient));
 
   router.route('/login')
-    .post(tokenValidation, initLoginUserRequestHandler(sequelizeClient));
+    .post(BodyValidation(UserSchema), initLoginUserRequestHandler(sequelizeClient));
   router.route('/register')
-    .post(initRegisterUserRequestHandler(sequelizeClient));
+    .post(BodyValidation(UserSchema), initRegisterUserRequestHandler(sequelizeClient));
 
   return router;
 }
@@ -71,8 +73,7 @@ function initLoginUserRequestHandler(sequelizeClient: SequelizeClient): RequestH
     const { models } = sequelizeClient;
 
     try {
-      // NOTE(roman): missing validation and cleaning
-      const { email, password } = req.body as { name: string; email: string; password: string };
+      const { email, password } = req.body as CreateUserData;
 
       const user = await models.users.findOne({
         attributes: ['id', 'passwordHash'],
@@ -83,7 +84,7 @@ function initLoginUserRequestHandler(sequelizeClient: SequelizeClient): RequestH
         throw new UnauthorizedError('EMAIL_OR_PASSWORD_INCORRECT');
       }
 
-      if (user.passwordHash !== hashPassword(password)) {
+      if (!checkPassword(password, user.passwordHash)) {
         throw new UnauthorizedError('EMAIL_OR_PASSWORD_INCORRECT');
       }
 
@@ -99,7 +100,6 @@ function initLoginUserRequestHandler(sequelizeClient: SequelizeClient): RequestH
 function initRegisterUserRequestHandler(sequelizeClient: SequelizeClient): RequestHandler {
   return async function createUserRequestHandler(req, res, next): Promise<void> {
     try {
-      // NOTE(roman): missing validation and cleaning
       const { name, email, password } = req.body as Omit<CreateUserData, 'type'>;
 
       await createUser({ type: UserType.BLOGGER, name, email, password }, sequelizeClient);

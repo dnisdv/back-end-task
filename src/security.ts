@@ -1,24 +1,20 @@
-import { NotImplementedError } from "./errors";
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-// TODO(roman): implement these
-// external libraries can be used
-// you can even ignore them and use your own preferred method
-
-export function hashPassword(password: string): string {
-  throw new NotImplementedError('PASSWORD_HASHING_NOT_IMPLEMENTED_YET');
+export function checkPassword(password: string, hash: string): boolean {
+  return bcrypt.compareSync(password, hash);
 }
 
 export function generateToken(data: TokenData): string {
-  throw new NotImplementedError('TOKEN_GENERATION_NOT_IMPLEMENTED_YET');
+  return jwt.sign(data, String(process.env.jwtSecretKey));
 }
 
 export function isValidToken(token: string): boolean {
-  throw new NotImplementedError('TOKEN_VALIDATION_NOT_IMPLEMENTED_YET');
+  return !!jwt.verify(token, String(process.env.jwtSecretKey));
 }
 
-// NOTE(roman): assuming that `isValidToken` will be called before
 export function extraDataFromToken(token: string): TokenData {
-  throw new NotImplementedError('TOKEN_EXTRACTION_NOT_IMPLEMENTED_YET');
+  return jwt.verify(token, String(process.env.jwtSecretKey)) as unknown as TokenData;
 }
 
 export interface TokenData {
