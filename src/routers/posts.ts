@@ -73,12 +73,12 @@ function initGetSinglePostRequestHandler(sequelizeClient: SequelizeClient): Requ
     try {
       const authorId = (req as unknown as { auth: RequestAuth }).auth.user.id;
       const { id: postId } = req.params;
-      const isAdminOrAuthor = (req as unknown as { auth: RequestAuth }).auth.user.type === UserType.ADMIN || +authorId === +postId;
+      const isAdmin = (req as unknown as { auth: RequestAuth }).auth.user.type === UserType.ADMIN; 
 
       const post = await models.posts.findOne({
         where: {
            id: postId,
-           ...!isAdminOrAuthor && { isHidden: false },
+           ...!isAdmin && { isHidden: false },
         } ,
         raw: true,
       });
@@ -87,7 +87,7 @@ function initGetSinglePostRequestHandler(sequelizeClient: SequelizeClient): Requ
         throw new NotFoundError('Post not found', req.method, req.path);
       }
 
-      if(post.authorId === authorId){
+      if(post.authorId === authorId || isAdmin){
         res.status(200).send(post);
         return res.end();
       }
@@ -126,7 +126,7 @@ function initDeletePostRequestHandler(sequelizeClient: SequelizeClient): Request
         throw new UnauthorizedError('you dont have access to the post');
       }
 
-      await post.destroy();
+      await postDelete({id: post.id}, sequelizeClient);
       return res.status(200).send().end();
     } catch (error) {
       next(error);
@@ -138,10 +138,12 @@ function initUpdatePostRequestHandler(sequelizeClient: SequelizeClient): Request
   return async function createUserRequestHandler(req, res, next): Promise<void> {
     try {
       const author = (req as unknown as { auth: RequestAuth }).auth.user;
-
       const { title, content, isHidden, id } = req.body as UpdatePostData;
 
       const post = await updatePost({ title, content, isHidden, id, authorId: author.id }, sequelizeClient);
+      if(post.length <= 1){
+        throw new NotFoundError('Post not found', req.method, req.path);
+      }
       return res.status(200).send(post).end();
     } catch (error) {
       next(error);
@@ -214,6 +216,17 @@ async function updatePost(data: CreatePostData, sequelizeClient: SequelizeClient
         },
     );
     return post[1];
+}
+
+async function postDelete(data: DeletePostData, sequelizeClient: SequelizeClient): Promise<void> {
+  const { id } = data;
+  const { models } = sequelizeClient; 
+
+  await models.posts.destroy<Post>(
+      { 
+       where: { id },
+      }
+  );
 }
 
 type DeletePostData = Pick<Post, 'id'>
